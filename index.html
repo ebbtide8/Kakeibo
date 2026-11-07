@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>家計簿</title><link rel="icon" href="data:,">
+<style>
+:root{--bg:#f4f5f6;--card:#fff;--tx:#1a1a1a;--red:#d12c2c;--gray:#6b7280;--gl:#e5e7eb;--g:#2f9e5b;--h:#2b6cb0;--w:#dd7a1f;--hb:#e6effa;--wb:#fdf0e2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171a;--card:#202327;--tx:#f0f0f0;--red:#ff6b6b;--gray:#9aa1ab;--gl:#33383e;--hb:#1c2a3b;--wb:#3a2a19;color-scheme:dark}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:15px/1.4 "Hiragino Sans","Noto Sans JP",system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#top{padding:10px 14px 6px;text-align:center}
+#top small{color:var(--gray)}#total{font-size:clamp(34px,10vw,52px);font-weight:700;line-height:1.1}
+.neg{color:var(--red)}
+#bar{display:flex;gap:8px;justify-content:center;margin-top:4px}
+button{font:inherit;cursor:pointer}
+.sm{background:var(--gl);color:var(--tx);border:0;border-radius:8px;padding:5px 10px;font-size:13px}
+#cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 8px;overflow-y:auto;align-content:start}
+.col{background:var(--card);border-radius:12px;padding:10px;min-width:0}
+.col.h{border-top:5px solid var(--h)}.col.w{border-top:5px solid var(--w)}
+.who{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:6px}
+.h .who{color:var(--h)}.w .who{color:var(--w)}
+.ic{width:34px;height:34px;border-radius:50%;background:var(--gl);object-fit:cover;flex:none;display:grid;place-items:center;overflow:hidden;border:0;padding:0;font-size:14px;color:var(--gray)}
+.ic.s{width:26px;height:26px;font-size:11px}
+.ic img{width:100%;height:100%;object-fit:cover}
+.acc{display:flex;align-items:center;gap:10px;width:100%;border-bottom:1px solid var(--gl);padding:8px 4px;color:var(--tx);cursor:pointer;border-radius:6px}
+.acc:hover{background:var(--gl)}
+.acc .n{font-size:13px;color:var(--gray)}
+.acc .tx{min-width:0;flex:1}
+.acc .v{font-size:19px;font-weight:600}
+.ic[data-ic]{cursor:pointer;outline:2px dashed var(--gray)}
+#total{cursor:pointer}
+.h .acc .n b,.w .acc .n b{font-weight:400}
+input.nm{font:inherit;width:100%;min-width:0;border:1px solid var(--gl);border-radius:6px;padding:3px 6px;background:var(--bg);color:var(--tx)}
+.sync{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:8px;font-size:11px;color:var(--gray)}
+.sync.warn{color:var(--tx);background:var(--gl);border-radius:6px;padding:4px}
+#add{margin:8px;padding:16px;border:0;border-radius:12px;background:var(--g);color:#fff;font-size:18px;font-weight:700;width:calc(100% - 16px)}
+#foot{padding-bottom:env(safe-area-inset-bottom,0px)}
+.dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:5}
+.dlg.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:520px;max-height:92%;overflow-y:auto;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+.sheet h2{margin:0 0 10px;font-size:17px}
+label{display:block;font-size:12px;color:var(--gray);margin:10px 0 3px}
+select,input[type=date],input[type=number],input[type=text]{width:100%;font:inherit;padding:9px;border:1px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--tx)}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:9px;border:1px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--tx)}
+.seg button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.ok{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;background:var(--g);color:#fff;font-weight:700;font-size:16px}
+.cl{background:var(--gl);color:var(--tx);margin-top:8px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--gl)}
+.row small{display:block;color:var(--gray)}
+.row.fut{opacity:.7}
+.row[data-tx]{cursor:pointer;border-radius:6px;padding-left:4px;padding-right:4px}
+.row[data-tx]:hover{background:var(--gl)}
+#msg{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--gray);color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;display:none;z-index:9;max-width:90%}
+@media (max-width:360px){.acc .v{font-size:16px}}
+</style></head><body>
+<div id="top"><small>2人の合計残高(タップで将来の合計)</small><div id="total">¥ 0</div>
+<div id="bar"><button class="sm" id="edit">名前・口座を編集</button><button class="sm" id="csv">CSV出力</button></div></div>
+<div id="cols"><div class="col h" id="ch"></div><div class="col w" id="cw"></div></div>
+<div id="foot"><button id="add">入力</button></div>
+<div class="dlg" id="d1"><div class="sheet" id="s1"></div></div>
+<div class="dlg" id="d2"><div class="sheet" id="s2"></div></div>
+<div id="msg"></div>
+<input type="file" id="file" accept="image/*" hidden>
+<script>
+const ACC=['財布','銀行口座A','銀行口座B','銀行口座C','クレジット','交通系IC'];
+const INC=['給与','営業','臨時収入','パート代'];
+const EXP={食費:0,交通費:0,交際費:0,消耗品:0,雑費:0,図書費:0,地代家賃:['家賃','駐輪場代'],通信費:['携帯電話','インターネット','衛星放送','切手'],光熱費:['水道','電気','ガス'],保険年金:['国民健康保険','全労済','火災保険'],医療費:0,荷台運賃:0,未設定:0};
+const KEY='kakeibo-v1';let S;
+try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
+if(!S){S={names:{h:'夫',w:'妻'},icons:{},acc:{},tx:[],sync:null};['h','w'].forEach(o=>ACC.forEach((a,i)=>S.acc[o+i]=a))}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){msg('保存できません。ブラウザの容量を確認してください。')}};
+const $=id=>document.getElementById(id);
+const yen=n=>'¥ '+n.toLocaleString('ja-JP');
+const ids=[...[0,1,2,3,4,5].map(i=>'h'+i),...[0,1,2,3,4,5].map(i=>'w'+i)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function msg(t){const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',2800)}
+const todayStr=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+function bal(id,all){let b=0;const td=todayStr();S.tx.forEach(t=>{if(!all&&t.date>td)return;if(t.type==='収入'&&t.acct===id)b+=t.amount;else if(t.type==='支出'&&t.acct===id)b-=t.amount;else if(t.type==='振替'){if(t.acct===id)b-=t.amount;if(t.to===id)b+=t.amount}});return b}
+const icon=(k)=>`<span class="ic" ${editing?`data-ic="${k}"`:''}>${S.icons[k]?`<img src="${S.icons[k]}" alt="">`:(editing?'画像':'')}</span>`;
+let editing=false;
+function render(){
+ let tot=0;
+ ['h','w'].forEach(o=>{
+  let h=`<div class="who">${icon(o)}${editing?`<input class="nm" data-nm="${o}" value="${esc(S.names[o])}">`:`<span>${esc(S.names[o])}</span>`}</div>`;
+  for(let i=0;i<6;i++){const id=o+i,b=bal(id);tot+=b;
+   h+=`<div class="acc" data-ac="${id}">${icon(id)}<div class="tx"><div class="n">${editing?`<input class="nm" data-an="${id}" value="${esc(S.acc[id])}">`:esc(S.acc[id])}</div><div class="v ${b<0?'neg':''}">${yen(b)}</div></div></div>`}
+  const stale=S.sync===null;
+  h+=`<div class="sync ${stale?'warn':''}"><span>${S.sync?'最終同期 '+new Date(S.sync).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'未同期の保存があります'}</span><button class="sm" data-cloud="1" aria-label="今すぐ同期">☁</button></div>`;
+  $('c'+o).innerHTML=h});
+ const t=$('total');t.textContent=yen(tot);t.className=tot<0?'neg':'';
+ $('edit').textContent=editing?'編集を終える':'名前・口座を編集'}
+let iconTarget=null;
+document.addEventListener('click',e=>{
+ const ic=e.target.closest('[data-ic]');if(ic){iconTarget=ic.dataset.ic;$('file').click();return}
+ if(e.target.closest('[data-cloud]')){msg('Googleスプレッドシートとの同期は、次の段階で設定できるようにします。');return}
+ const tr=e.target.closest('[data-tx]');if(tr){editTx(+tr.dataset.tx);return}
+ const ac=e.target.closest('[data-ac]');if(ac&&!editing&&!e.target.closest('input'))hist(ac.dataset.ac)});
+$('file').onchange=e=>{const f=e.target.files[0];if(!f||!iconTarget)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=96;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,96,96);S.icons[iconTarget]=c.toDataURL('image/jpeg',.8);save();render()};im.src=r.result};r.readAsDataURL(f);e.target.value=''};
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset.nm){S.names[t.dataset.nm]=t.value;save()}if(t.dataset.an){S.acc[t.dataset.an]=t.value;save()}});
+$('edit').onclick=()=>{editing=!editing;render()};
+$('total').onclick=()=>{const a=ids.reduce((s,i)=>s+bal(i),0),f=ids.reduce((s,i)=>s+bal(i,true),0);
+ $('s2').innerHTML=`<h2>2人の合計</h2><div class="row"><span>現在の合計</span><b class="${a<0?'neg':''}">${yen(a)}</b></div><div class="row" style="opacity:.7"><span>将来の合計</span><b class="${f<0?'neg':''}">${yen(f)}</b></div><button class="ok cl" id="x2">閉じる</button>`;$('d2').classList.add('on');$('x2').onclick=()=>$('d2').classList.remove('on')};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!editing)render()});
+const owner=id=>S.names[id[0]];
+const an=id=>owner(id)+'の'+S.acc[id];
+function hist(id){
+ const L=S.tx.filter(t=>t.acct===id||t.to===id).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ histAcct=id;const b1=bal(id),b2=bal(id,true);
+ let h=`<h2>${esc(an(id))}の履歴</h2><div class="row"><span>現在の合計</span><b class="${b1<0?'neg':''}">${yen(b1)}</b></div><div class="row" style="opacity:.7"><span>将来の合計</span><b class="${b2<0?'neg':''}">${yen(b2)}</b></div>`;
+ if(!L.length)h+='<p style="color:var(--gray)">まだ履歴がありません。下の「入力」から登録できます。</p>';
+ L.forEach(t=>{const v=t.type==='収入'?t.amount:t.type==='支出'?-t.amount:(t.acct===id?-t.amount:t.amount);
+  h+=`<div class="row ${t.date>todayStr()?'fut':''}" data-tx="${t.id}"><div>${t.date}${t.date>todayStr()?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}<small>${esc([t.shop,t.memo].filter(Boolean).join(' / '))}${t.type==='振替'?esc(t.acct===id?'→ '+an(t.to):'← '+an(t.acct)):''}</small></div><b class="${v<0?'neg':''}">${yen(v)}</b></div>`});
+ h+='<button class="ok cl" id="x2">閉じる</button>';$('s2').innerHTML=h;$('d2').classList.add('on');$('x2').onclick=()=>$('d2').classList.remove('on')}
+$('d2').onclick=e=>{if(e.target.id==='d2')$('d2').classList.remove('on')};
+$('d1').onclick=e=>{if(e.target.id==='d1')closeForm()};
+const opts=(a,sel)=>a.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+const accOpts=()=>ids.map(i=>`<option value="${i}">${esc(an(i))}</option>`).join('');
+let type='支出',editId=null,histAcct=null;
+function closeForm(){$('d1').classList.remove('on');const b=editId;editId=null;if(b&&histAcct)hist(histAcct)}
+function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t)return;editId=id;type=t.type;$('d2').classList.remove('on');form();$('d1').classList.add('on')}
+function form(){
+ const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+ const prev=$('dt')?$('dt').value:today;
+ let h=`<h2>${editId?'入力を修正':'入力'}</h2><div class="seg" ${editId?'style="display:none"':''}>${['収入','支出','振替'].map(t=>`<button data-t="${t}" class="${t===type?'on':''}">${t}</button>`).join('')}</div>
+ <label>日付</label><input type="date" id="dt" value="${prev}">`;
+ if(type==='振替')h+=`<label>どの口座から</label><select id="a1">${accOpts()}</select><label>どの口座へ</label><select id="a2">${accOpts()}</select>`;
+ else h+=`<label>口座</label><select id="a1">${accOpts()}</select>`;
+ h+=`<label>金額</label><input type="number" id="am" inputmode="numeric" min="1" placeholder="0">`;
+ if(type!=='振替'){h+=`<label>科目</label><select id="sj">${opts(type==='収入'?INC:Object.keys(EXP))}</select><div id="itw"></div><label>お店(空欄可)</label><input type="text" id="sh"><label>メモ(空欄可)</label><input type="text" id="mm">`}
+ h+=`<button class="ok" id="sv">入力を確定</button><button class="ok cl" id="x1">キャンセル</button>${editId?'<button class="ok" id="dl" style="background:#d12c2c">この入力を削除</button>':''}`;
+ $('s1').innerHTML=h;
+ document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{type=b.dataset.t;form()});
+ const items=()=>{const w=$('itw');if(type!=='支出'){w.innerHTML='';return}const it=EXP[$('sj').value];w.innerHTML=it?`<label>品目</label><select id="it">${opts(it)}</select>`:''};
+ if($('sj')){$('sj').onchange=items;items()}
+ if(type==='振替')$('a2').selectedIndex=1;
+ if(editId){const t=S.tx.find(x=>x.id===editId);$('dt').value=t.date;$('a1').value=t.acct;$('am').value=t.amount;if(t.type==='振替')$('a2').value=t.to;else{$('sj').value=t.subject;items();if($('it'))$('it').value=t.item;$('sh').value=t.shop||'';$('mm').value=t.memo||''}
+  $('dl').onclick=()=>{if(!$('dl').dataset.a){$('dl').dataset.a=1;$('dl').textContent='もう一度押すと削除します';return}S.tx=S.tx.filter(x=>x.id!==editId);S.sync=null;save();render();closeForm();msg('削除しました。')}}
+ $('x1').onclick=closeForm;
+ $('sv').onclick=()=>{const am=Math.round(+$('am').value);
+  if(!am||am<1)return msg('金額を入力してください。');
+  const t={id:editId||Date.now(),date:$('dt').value,type,acct:$('a1').value,amount:am};
+  if(type==='振替'){t.to=$('a2').value;if(t.to===t.acct)return msg('振替元と振替先に別の口座を選んでください。')}
+  else{t.subject=$('sj').value;t.item=$('it')?$('it').value:'';t.shop=$('sh').value;t.memo=$('mm').value}
+  if(editId){const i=S.tx.findIndex(x=>x.id===editId);S.tx[i]=t}else S.tx.push(t);S.sync=null;save();render();closeForm();msg('保存しました。')}}
+$('add').onclick=()=>{editId=null;form();$('d1').classList.add('on')};
+$('csv').onclick=()=>{
+ const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+ const rows=[['日付','収支','口座','振替先','金額','科目','品目','お店','メモ']];
+ S.tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>rows.push([t.date,t.type,an(t.acct),t.to?an(t.to):'',t.amount,t.subject||'',t.item||'',t.shop||'',t.memo||'']));
+ const blob=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='kakeibo.csv';a.click()};
+render();
+</script></body></html>
