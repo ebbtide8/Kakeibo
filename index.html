@@ -42,6 +42,8 @@ label{display:block;font-size:12px;color:var(--gray);margin:10px 0 3px}
 select,input[type=date],input[type=number],input[type=text]{width:100%;font:inherit;padding:9px;border:1px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--tx)}
 .seg{display:flex;gap:6px}.seg button{flex:1;padding:9px;border:1px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--tx)}
 .seg button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.seg button.on[data-t="収入"]{background:#000;border-color:var(--tx)}
+.seg button.on[data-t="支出"]{background:#d12c2c;border-color:#d12c2c}
 .ok{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;background:var(--g);color:#fff;font-weight:700;font-size:16px}
 .cl{background:var(--gl);color:var(--tx);margin-top:8px}
 .row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--gl)}
@@ -110,13 +112,32 @@ function hist(id){
  if(!L.length)h+='<p style="color:var(--gray)">まだ履歴がありません。下の「入力」から登録できます。</p>';
  L.forEach(t=>{const v=t.type==='収入'?t.amount:t.type==='支出'?-t.amount:(t.acct===id?-t.amount:t.amount);
   h+=`<div class="row ${t.date>todayStr()?'fut':''}" data-tx="${t.id}"><div>${t.date}${t.date>todayStr()?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}<small>${esc([t.shop,t.memo].filter(Boolean).join(' / '))}${t.type==='振替'?esc(t.acct===id?'→ '+an(t.to):'← '+an(t.acct)):''}</small></div><b class="${v<0?'neg':''}">${yen(v)}</b></div>`});
- h+='<button class="ok cl" id="x2">閉じる</button>';$('s2').innerHTML=h;$('d2').classList.add('on');$('x2').onclick=()=>$('d2').classList.remove('on')}
+ if(/^[hw][45]$/.test(id))h+='<button class="ok" id="sch">翌月10日の振替予定を自動入力</button>';h+='<button class="ok cl" id="x2">閉じる</button>';$('s2').innerHTML=h;$('d2').classList.add('on');if($('sch'))$('sch').onclick=()=>sched(id);$('x2').onclick=()=>$('d2').classList.remove('on')}
 $('d2').onclick=e=>{if(e.target.id==='d2')$('d2').classList.remove('on')};
 $('d1').onclick=e=>{if(e.target.id==='d1')closeForm()};
 const opts=(a,sel)=>a.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
 const accOpts=()=>ids.map(i=>`<option value="${i}">${esc(an(i))}</option>`).join('');
 let type='支出',editId=null,histAcct=null;
 function closeForm(){$('d1').classList.remove('on');const b=editId;editId=null;if(b&&histAcct)hist(histAcct)}
+function shopUI(cur){const sj=$('sj').value,seen=[];S.tx.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).forEach(t=>{if(t.subject===sj&&t.shop&&!seen.includes(t.shop)&&seen.length<10)seen.push(t.shop)});
+ const s=$('shs');s.innerHTML='<option value="">(お店なし)</option>'+seen.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__new">新規入力…</option>';
+ const v=cur===undefined?(seen.length?'':'__new'):(cur===''?'':seen.includes(cur)?cur:'__new');s.value=v;$('sh').style.display=v==='__new'?'':'none';if(cur&&v==='__new')$('sh').value=cur}
+const pad=n=>String(n).padStart(2,'0');
+function baseHol(y,m,d){const w=new Date(y,m-1,d).getDay(),n=Math.ceil(d/7),mon=w===1,k=m*100+d,q=Math.floor((y-1980)/4);
+ if([101,211,223,429,503,504,505,811,1103,1123].includes(k))return true;
+ if(mon&&((m===1&&n===2)||(m===7&&n===3)||(m===9&&n===3)||(m===10&&n===2)))return true;
+ if(m===3&&d===Math.floor(20.8431+.242194*(y-1980)-q))return true;
+ if(m===9&&d===Math.floor(23.2488+.242194*(y-1980)-q))return true;return false}
+const bh=dt=>baseHol(dt.getFullYear(),dt.getMonth()+1,dt.getDate());
+function isHol(y,m,d){const dt=new Date(y,m-1,d),w=dt.getDay();if(w===0||w===6||(m===12&&d===31)||(m===1&&d<=3)||bh(dt))return true;
+ let p=new Date(y,m-1,d-1);while(bh(p)){if(p.getDay()===0)return true;p=new Date(p.getFullYear(),p.getMonth(),p.getDate()-1)}
+ return bh(new Date(y,m-1,d-1))&&bh(new Date(y,m-1,d+1))}
+function settleDate(y,m){let d=10;while(isHol(y,m,d))d++;return y+'-'+pad(m)+'-'+pad(d)}
+function sched(id){const src=id[1]==='4'?id[0]+'1':'h1',td=todayStr(),sum={};
+ S.tx.forEach(t=>{if(t.acct!==id||(t.type!=='支出'&&t.type!=='収入'))return;let[y,m]=t.date.split('-').map(Number);m++;if(m>12){m=1;y++}const sd=settleDate(y,m);sum[sd]=(sum[sd]||0)+(t.type==='支出'?t.amount:-t.amount)});
+ let add=0,dup=0;Object.keys(sum).sort().forEach(sd=>{const a=sum[sd];if(a<=0||sd<td)return;if(S.tx.some(t=>t.type==='振替'&&t.to===id&&t.date===sd)){dup++;return}S.tx.push({id:Date.now()+add,date:sd,type:'振替',acct:src,to:id,amount:a});add++});
+ if(add){S.sync=null;save();render()}hist(id);
+ msg(add?add+'件の振替予定を登録しました。'+(dup?'(登録済み'+dup+'件は除く)':''):dup?'すでに振替予定が登録されているため、二重登録しませんでした。':'振替予定にできる支出がありません。')}
 function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t)return;editId=id;type=t.type;$('d2').classList.remove('on');form();$('d1').classList.add('on')}
 function form(){
  const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
@@ -126,21 +147,21 @@ function form(){
  if(type==='振替')h+=`<label>どの口座から</label><select id="a1">${accOpts()}</select><label>どの口座へ</label><select id="a2">${accOpts()}</select>`;
  else h+=`<label>口座</label><select id="a1">${accOpts()}</select>`;
  h+=`<label>金額</label><input type="number" id="am" inputmode="numeric" min="1" placeholder="0">`;
- if(type!=='振替'){h+=`<label>科目</label><select id="sj">${opts(type==='収入'?INC:Object.keys(EXP))}</select><div id="itw"></div><label>お店(空欄可)</label><input type="text" id="sh"><label>メモ(空欄可)</label><input type="text" id="mm">`}
+ if(type!=='振替'){h+=`<label>科目</label><select id="sj">${opts(type==='収入'?INC:Object.keys(EXP))}</select><div id="itw"></div><label>お店</label><select id="shs"></select><input type="text" id="sh" placeholder="お店の名前" style="margin-top:6px;display:none"><label>メモ(空欄可)</label><input type="text" id="mm">`}
  h+=`<button class="ok" id="sv">入力を確定</button><button class="ok cl" id="x1">キャンセル</button>${editId?'<button class="ok" id="dl" style="background:#d12c2c">この入力を削除</button>':''}`;
  $('s1').innerHTML=h;
  document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{type=b.dataset.t;form()});
  const items=()=>{const w=$('itw');if(type!=='支出'){w.innerHTML='';return}const it=EXP[$('sj').value];w.innerHTML=it?`<label>品目</label><select id="it">${opts(it)}</select>`:''};
- if($('sj')){$('sj').onchange=items;items()}
+ if($('sj')){$('sj').onchange=()=>{items();shopUI()};items();shopUI();$('shs').onchange=()=>{$('sh').style.display=$('shs').value==='__new'?'':'none'}}
  if(type==='振替')$('a2').selectedIndex=1;
- if(editId){const t=S.tx.find(x=>x.id===editId);$('dt').value=t.date;$('a1').value=t.acct;$('am').value=t.amount;if(t.type==='振替')$('a2').value=t.to;else{$('sj').value=t.subject;items();if($('it'))$('it').value=t.item;$('sh').value=t.shop||'';$('mm').value=t.memo||''}
+ if(editId){const t=S.tx.find(x=>x.id===editId);$('dt').value=t.date;$('a1').value=t.acct;$('am').value=t.amount;if(t.type==='振替')$('a2').value=t.to;else{$('sj').value=t.subject;items();if($('it'))$('it').value=t.item;shopUI(t.shop||'');$('mm').value=t.memo||''}
   $('dl').onclick=()=>{if(!$('dl').dataset.a){$('dl').dataset.a=1;$('dl').textContent='もう一度押すと削除します';return}S.tx=S.tx.filter(x=>x.id!==editId);S.sync=null;save();render();closeForm();msg('削除しました。')}}
  $('x1').onclick=closeForm;
  $('sv').onclick=()=>{const am=Math.round(+$('am').value);
   if(!am||am<1)return msg('金額を入力してください。');
   const t={id:editId||Date.now(),date:$('dt').value,type,acct:$('a1').value,amount:am};
   if(type==='振替'){t.to=$('a2').value;if(t.to===t.acct)return msg('振替元と振替先に別の口座を選んでください。')}
-  else{t.subject=$('sj').value;t.item=$('it')?$('it').value:'';t.shop=$('sh').value;t.memo=$('mm').value}
+  else{t.subject=$('sj').value;t.item=$('it')?$('it').value:'';t.shop=$('shs').value==='__new'?$('sh').value.trim():$('shs').value;t.memo=$('mm').value}
   if(editId){const i=S.tx.findIndex(x=>x.id===editId);S.tx[i]=t}else S.tx.push(t);S.sync=null;save();render();closeForm();msg('保存しました。')}}
 $('add').onclick=()=>{editId=null;form();$('d1').classList.add('on')};
 $('csv').onclick=()=>{
