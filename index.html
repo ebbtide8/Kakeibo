@@ -27,6 +27,7 @@ button{font:inherit;cursor:pointer}
 .acc .tx{min-width:0;flex:1}
 .acc .v{font-size:19px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
 .ic[data-ic]{cursor:pointer;outline:2px dashed var(--gray)}
+.acc .v[data-init]{text-decoration:underline dashed;cursor:pointer}
 #total{cursor:pointer}
 .h .acc .n b,.w .acc .n b{font-weight:400}
 input.nm{font:inherit;width:100%;min-width:0;border:1px solid var(--gl);border-radius:6px;padding:3px 6px;background:var(--bg);color:var(--tx)}
@@ -77,7 +78,7 @@ const ids=[...[0,1,2,3,4,5].map(i=>'h'+i),...[0,1,2,3,4,5].map(i=>'w'+i)];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function msg(t){const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',2800)}
 const todayStr=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
-function bal(id,all){let b=0;const td=todayStr();S.tx.forEach(t=>{if(!all&&t.date>td)return;if(t.type==='収入'&&t.acct===id)b+=t.amount;else if(t.type==='支出'&&t.acct===id)b-=t.amount;else if(t.type==='振替'){if(t.acct===id)b-=t.amount;if(t.to===id)b+=t.amount}});return b}
+function bal(id,all){let b=(S.init&&S.init[id])||0;const td=todayStr();S.tx.forEach(t=>{if(!all&&t.date>td)return;if(t.type==='収入'&&t.acct===id)b+=t.amount;else if(t.type==='支出'&&t.acct===id)b-=t.amount;else if(t.type==='振替'){if(t.acct===id)b-=t.amount;if(t.to===id)b+=t.amount}});return b}
 const icon=(k)=>`<span class="ic" ${editing?`data-ic="${k}"`:''}>${S.icons[k]?`<img src="${S.icons[k]}" alt="">`:(editing?'画像':'')}</span>`;
 let editing=false;
 function render(){
@@ -85,7 +86,7 @@ function render(){
  ['h','w'].forEach(o=>{
   let h=`<div class="who">${icon(o)}${editing?`<input class="nm" data-nm="${o}" value="${esc(S.names[o])}">`:`<span>${esc(S.names[o])}</span>`}</div>`;
   for(let i=0;i<6;i++){const id=o+i,b=bal(id);tot+=b;
-   h+=`<div class="acc" data-ac="${id}">${icon(id)}<div class="tx"><div class="n">${editing?`<input class="nm" data-an="${id}" value="${esc(S.acc[id])}">`:esc(S.acc[id])}</div><div class="v ${b<0?'neg':''}">${yen(b)}</div></div></div>`}
+   h+=`<div class="acc" data-ac="${id}">${icon(id)}<div class="tx"><div class="n">${editing?`<input class="nm" data-an="${id}" value="${esc(S.acc[id])}">`:esc(S.acc[id])}</div><div class="v ${b<0?'neg':''}" ${editing?`data-init="${id}"`:''}>${yen(b)}</div></div></div>`}
   const stale=S.sync===null;
   h+=`<div class="sync ${stale?'warn':''}"><span>${S.sync?'最終同期 '+new Date(S.sync).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'未同期の保存があります'}</span><button class="sm" data-cloud="1" aria-label="今すぐ同期">☁</button></div>`;
   $('c'+o).innerHTML=h});
@@ -95,6 +96,7 @@ let iconTarget=null;
 document.addEventListener('click',e=>{
  const ic=e.target.closest('[data-ic]');if(ic){iconMenu(ic.dataset.ic);return}
  if(e.target.closest('[data-cloud]')){msg('Googleスプレッドシートとの同期は、次の段階で設定できるようにします。');return}
+ const iv=e.target.closest('[data-init]');if(iv){initMenu(iv.dataset.init);return}
  const tr=e.target.closest('[data-tx]');if(tr){editTx(+tr.dataset.tx);return}
  const ac=e.target.closest('[data-ac]');if(ac&&!editing&&!e.target.closest('input'))hist(ac.dataset.ac)});
 $('file').onchange=e=>{const f=e.target.files[0];if(!f||!iconTarget)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=96;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,96,96);S.icons[iconTarget]=c.toDataURL('image/jpeg',.8);save();render()};im.src=r.result};r.readAsDataURL(f);e.target.value=''};
@@ -141,6 +143,9 @@ function sched(id){const src=id[1]==='4'?id[0]+'1':'h1',td=todayStr(),sum={};
  if(add){S.sync=null;save();render()}hist(id);
  msg(add?add+'件の振替予定を登録しました。'+(dup?'(登録済み'+dup+'件は除く)':''):dup?'すでに振替予定が登録されているため、二重登録しませんでした。':'振替予定にできる支出がありません。')}
 let csvTarget=null;
+function initMenu(id){const cur=(S.init&&S.init[id])||0;$('s2').innerHTML=`<h2>${esc(an(id))}の初期設定金額</h2><p style="color:var(--gray);font-size:13px;margin:0">この金額に履歴の収入・支出・振替を加減して残高を計算します。履歴やCSV出力の内容は変わりません。</p><label>初期設定金額(円)</label><input type="number" id="iv" inputmode="numeric" value="${cur}"><div class="row" style="margin-top:10px"><span>現在の残高</span><b>${yen(bal(id))}</b></div><button class="ok" id="isv">設定する</button><button class="ok cl" id="ixx">キャンセル</button>`;$('d2').classList.add('on');
+ $('isv').onclick=()=>{S.init=S.init||{};S.init[id]=Math.round(+$('iv').value)||0;S.sync=null;save();render();$('d2').classList.remove('on')};
+ $('ixx').onclick=()=>$('d2').classList.remove('on')}
 function iconMenu(k){const has=!!S.icons[k];$('s2').innerHTML=`<h2>アイコンの設定</h2><button class="ok" id="ia">A: アイコン画像を設定／再設定</button><button class="ok" id="ib" style="background:#d12c2c;${has?'':'opacity:.4'}">B: アイコン画像を削除</button><button class="ok cl" id="ix">キャンセル</button>`;$('d2').classList.add('on');
  $('ia').onclick=()=>{iconTarget=k;$('d2').classList.remove('on');$('file').click()};
  $('ib').onclick=()=>{if(has){delete S.icons[k];save();render()}$('d2').classList.remove('on')};
