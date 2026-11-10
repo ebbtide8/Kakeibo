@@ -138,8 +138,8 @@ function isHol(y,m,d){const dt=new Date(y,m-1,d),w=dt.getDay();if(w===0||w===6||
  return bh(new Date(y,m-1,d-1))&&bh(new Date(y,m-1,d+1))}
 function settleDate(y,m){let d=10;while(isHol(y,m,d))d++;return y+'-'+pad(m)+'-'+pad(d)}
 function sched(id){const src=id[1]==='4'?id[0]+'1':'h1',td=todayStr(),sum={};
- S.tx.forEach(t=>{if(t.acct!==id||(t.type!=='支出'&&t.type!=='収入'))return;let[y,m]=t.date.split('-').map(Number);m++;if(m>12){m=1;y++}const sd=settleDate(y,m);sum[sd]=(sum[sd]||0)+(t.type==='支出'?t.amount:-t.amount)});
- let add=0,dup=0;Object.keys(sum).sort().forEach(sd=>{const a=sum[sd];if(a<=0||sd<td)return;if(S.tx.some(t=>t.type==='振替'&&t.to===id&&t.date===sd)){dup++;return}S.tx.push({id:Date.now()+add,date:sd,type:'振替',acct:src,to:id,amount:a});add++});
+ S.tx.forEach(t=>{if(t.acct!==id||(t.type!=='支出'&&t.type!=='収入'))return;let[y,m]=t.date.split('-').map(Number);m++;if(m>12){m=1;y++}let sd=settleDate(y,m);if(sd<td){let ty=+td.slice(0,4),tm=+td.slice(5,7)+1;if(tm>12){tm=1;ty++}sd=settleDate(ty,tm)}sum[sd]=(sum[sd]||0)+(t.type==='支出'?t.amount:-t.amount)});
+ let add=0,dup=0;Object.keys(sum).sort().forEach(sd=>{const a=sum[sd];if(a<=0)return;if(S.tx.some(t=>t.type==='振替'&&t.to===id&&t.date===sd)){dup++;return}S.tx.push({id:Date.now()+add,date:sd,type:'振替',acct:src,to:id,amount:a});add++});
  if(add){S.sync=null;save();render()}hist(id);
  msg(add?add+'件の振替予定を登録しました。'+(dup?'(登録済み'+dup+'件は除く)':''):dup?'すでに振替予定が登録されているため、二重登録しませんでした。':'振替予定にできる支出がありません。')}
 let csvTarget=null;
