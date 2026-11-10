@@ -10,7 +10,7 @@ body{background:var(--bg);color:var(--tx);font:15px/1.4 "Hiragino Sans","Noto Sa
 #top{padding:10px 14px 6px;text-align:center}
 #top small{color:var(--gray)}#total{font-size:24px;font-weight:700;line-height:1.2}
 .neg{color:var(--red)}
-#bar{display:flex;gap:8px;justify-content:center;margin-top:4px}
+#bar{display:flex;gap:8px;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--gl)}
 button{font:inherit;cursor:pointer}
 .sm{background:var(--gl);color:var(--tx);border:0;border-radius:8px;padding:5px 10px;font-size:13px}
 #cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 8px;overflow-y:auto;align-content:start}
@@ -50,6 +50,8 @@ select,input[type=date],input[type=number],input[type=text]{width:100%;font:inhe
 .row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--gl)}
 .row small{display:block;color:var(--gray)}
 .row.fut{opacity:.7}
+.star{color:#f08a00;font-weight:700}
+#srch{margin:8px 8px 0;padding:13px;border:0;border-radius:12px;background:var(--h);color:#fff;font-size:16px;font-weight:700;width:calc(100% - 16px)}
 .row[data-tx]{cursor:pointer;border-radius:6px;padding-left:4px;padding-right:4px}
 .row[data-tx]:hover{background:var(--gl)}
 #msg{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--gray);color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;display:none;z-index:9;max-width:90%}
@@ -58,7 +60,7 @@ select,input[type=date],input[type=number],input[type=text]{width:100%;font:inhe
 <div id="top"><small>2人の合計残高(タップで将来の合計)</small><div id="total">¥ 0</div>
 <div id="bar"><button class="sm" id="edit">名前・口座を編集</button><button class="sm" id="csv">CSV出力</button><button class="sm" id="hide">金額を非表示</button></div></div>
 <div id="cols"><div class="col h" id="ch"></div><div class="col w" id="cw"></div></div>
-<div id="foot"><button id="add">入力</button></div>
+<div id="foot"><button id="srch">履歴を検索</button><button id="add">入力</button></div>
 <div class="dlg" id="d1"><div class="sheet" id="s1"></div></div>
 <div class="dlg" id="d2"><div class="sheet" id="s2"></div></div>
 <div id="msg"></div>
@@ -67,7 +69,7 @@ select,input[type=date],input[type=number],input[type=text]{width:100%;font:inhe
 <script>
 const ACC=['財布','銀行口座A','銀行口座B','銀行口座C','クレジット','交通系IC'];
 const INC=['給与','営業','臨時収入','パート代'];
-const EXP={食費:0,交通費:0,交際費:0,消耗品:0,雑費:0,図書費:0,地代家賃:['家賃','駐輪場代'],通信費:['携帯電話','インターネット','衛星放送','切手'],光熱費:['水道','電気','ガス'],保険年金:['国民健康保険','全労済','火災保険'],医療費:0,荷台運賃:0,未設定:0};
+const EXP={未設定:0,食費:0,交通費:0,交際費:0,消耗品:0,雑費:0,図書費:0,地代家賃:['家賃','駐輪場代'],通信費:['携帯電話','インターネット','衛星放送','切手'],光熱費:['水道','電気','ガス'],保険年金:['国民健康保険','全労済','火災保険'],医療費:0,荷台運賃:0};
 const KEY='kakeibo-v1';let S;
 try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
 if(!S){S={names:{h:'夫',w:'妻'},icons:{},acc:{},tx:[],sync:null};['h','w'].forEach(o=>ACC.forEach((a,i)=>S.acc[o+i]=a))}
@@ -110,19 +112,19 @@ const owner=id=>S.names[id[0]];
 const an=id=>owner(id)+'の'+S.acc[id];
 function hist(id){
  const L=S.tx.filter(t=>t.acct===id||t.to===id).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
- histAcct=id;const b1=bal(id),b2=bal(id,true);
+ histAcct=id;backFn=()=>hist(id);const b1=bal(id),b2=bal(id,true);
  let h=`<h2>${esc(an(id))}の履歴</h2><div class="row"><span>現在の合計</span><b class="${b1<0?'neg':''}">${yen(b1)}</b></div><div class="row" style="opacity:.7"><span>将来の合計</span><b class="${b2<0?'neg':''}">${yen(b2)}</b></div>`;
  if(!L.length)h+='<p style="color:var(--gray)">まだ履歴がありません。下の「入力」から登録できます。</p>';
  L.forEach(t=>{const v=t.type==='収入'?t.amount:t.type==='支出'?-t.amount:(t.acct===id?-t.amount:t.amount);
-  h+=`<div class="row ${t.date>todayStr()?'fut':''}" data-tx="${t.id}"><div>${t.date}${t.date>todayStr()?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}<small>${esc([t.shop,t.memo].filter(Boolean).join(' / '))}${t.type==='振替'?esc(t.acct===id?'→ '+an(t.to):'← '+an(t.acct)):''}</small></div><b class="${v<0?'neg':''}">${yen(v)}</b></div>`});
+  h+=`<div class="row ${t.date>todayStr()?'fut':''}" data-tx="${t.id}"><div>${t.date}${t.date>todayStr()?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc([t.shop,t.memo].filter(Boolean).join(' / '))}${t.type==='振替'?esc(t.acct===id?'→ '+an(t.to):'← '+an(t.acct)):''}</small></div><b class="${v<0?'neg':''}">${yen(v)}</b></div>`});
  if(/^[hw]4$/.test(id))h+='<button class="ok" id="csvi" style="background:#2b6cb0">CSV読み込み</button>';
  if(/^[hw][45]$/.test(id))h+='<button class="ok" id="sch">翌月10日の振替予定を自動入力</button>';h+='<button class="ok cl" id="x2">閉じる</button>';$('s2').innerHTML=h;$('d2').classList.add('on');if($('sch'))$('sch').onclick=()=>sched(id);if($('csvi'))$('csvi').onclick=()=>{csvTarget=id;$('csvf').click()};$('x2').onclick=()=>$('d2').classList.remove('on')}
 $('d2').onclick=e=>{if(e.target.id==='d2')$('d2').classList.remove('on')};
 $('d1').onclick=e=>{if(e.target.id==='d1')closeForm()};
 const opts=(a,sel)=>a.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
 const accOpts=()=>ids.map(i=>`<option value="${i}">${esc(an(i))}</option>`).join('');
-let type='支出',editId=null,histAcct=null;
-function closeForm(){$('d1').classList.remove('on');const b=editId;editId=null;if(b&&histAcct)hist(histAcct)}
+let type='支出',editId=null,histAcct=null,backFn=null;
+function closeForm(){$('d1').classList.remove('on');const b=editId;editId=null;if(b&&backFn)backFn()}
 function shopUI(cur){const sj=$('sj').value,seen=[];S.tx.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).forEach(t=>{if(t.subject===sj&&t.shop&&!seen.includes(t.shop)&&seen.length<10)seen.push(t.shop)});
  const s=$('shs');s.innerHTML='<option value="">(お店なし)</option>'+seen.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__new">新規入力…</option>';
  const v=cur===undefined?(seen.length?'':'__new'):(cur===''?'':seen.includes(cur)?cur:'__new');s.value=v;$('sh').style.display=v==='__new'?'':'none';if(cur&&v==='__new')$('sh').value=cur}
@@ -162,6 +164,19 @@ function importCSV(id,buf){let tx;try{tx=new TextDecoder('utf-8',{fatal:true}).d
  if(n){S.sync=null;save();render()}hist(id);
  msg(n?n+'件を取り込みました。'+(skip?'(登録済み'+skip+'件は除く)':''):skip?'すべて取り込み済みのため、追加しませんでした。':'取り込める明細がありませんでした。')}
 $('csvf').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f&&csvTarget)importCSV(csvTarget,await f.arrayBuffer())};
+const nz=s=>String(s||'').normalize('NFKC').toLowerCase();
+let lastQ=null;
+function searchForm(){const subs=[];INC.forEach(s=>subs.push([s,s]));Object.keys(EXP).forEach(s=>{subs.push([s,s]);(EXP[s]||[]).forEach(i=>subs.push([s+' › '+i,s+'|'+i]))});
+ $('s1').innerHTML=`<h2>履歴を検索</h2><label>収支</label><select id="qt"><option value="">指定なし</option><option>収入</option><option>支出</option><option>振替</option></select><label>期間(開始日〜終了日)</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="qf"><span>〜</span><input type="date" id="qe"></div><label>口座</label><select id="qa"><option value="">指定なし</option>${accOpts()}</select><label>科目(品目)</label><select id="qs"><option value="">指定なし</option>${subs.map(([l,v])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select><label>お店</label><input type="text" id="qh"><label>メモの内容</label><input type="text" id="qm"><label style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--tx);margin-top:12px"><input type="checkbox" id="qr" style="width:20px;height:20px;margin:0"><span><span class="star">★</span>付きのみ</span></label><button class="ok" id="qgo" style="background:#2b6cb0">検索</button><button class="ok cl" id="qx">キャンセル</button>`;
+ $('d1').classList.add('on');$('qx').onclick=()=>$('d1').classList.remove('on');
+ $('qgo').onclick=()=>{lastQ={t:$('qt').value,f:$('qf').value,e:$('qe').value,a:$('qa').value,s:$('qs').value,h:nz($('qh').value.trim()),m:nz($('qm').value.trim()),r:$('qr').checked};runSearch()}}
+function runSearch(){backFn=runSearch;const q=lastQ;if(!q)return;const sp=q.s?q.s.split('|'):['',''],qs=sp[0],qi=sp[1]||'';
+ const L=S.tx.filter(t=>(!q.t||t.type===q.t)&&(!q.f||t.date>=q.f)&&(!q.e||t.date<=q.e)&&(!q.a||t.acct===q.a||t.to===q.a)&&(!qs||(t.type!=='振替'&&(t.subject||'未設定')===qs&&(!qi||t.item===qi)))&&(!q.h||nz(t.shop).includes(q.h))&&(!q.m||nz(t.memo).includes(q.m))&&(!q.r||t.star)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ let h=`<h2>検索結果(${L.length}件)</h2>`;if(!L.length)h+='<p style="color:var(--gray)">条件に合う履歴がありません。</p>';
+ L.forEach(t=>{const fut=t.date>todayStr(),v=t.type==='収入'?t.amount:t.type==='支出'?-t.amount:t.amount;
+  h+=`<div class="row ${fut?'fut':''}" data-tx="${t.id}"><div>${t.date}${fut?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc(t.type==='振替'?an(t.acct)+' → '+an(t.to):[an(t.acct),t.shop,t.memo].filter(Boolean).join(' / '))}</small></div><b class="${t.type==='支出'?'neg':''}">${yen(v)}</b></div>`});
+ h+='<button class="ok cl" id="sx">閉じる</button>';$('s2').innerHTML=h;$('d2').classList.add('on');$('sx').onclick=()=>$('d2').classList.remove('on')}
+$('srch').onclick=searchForm;
 function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t)return;editId=id;type=t.type;$('d2').classList.remove('on');form();$('d1').classList.add('on')}
 function form(){
  const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
@@ -171,21 +186,21 @@ function form(){
  if(type==='振替')h+=`<label>どの口座から</label><select id="a1">${accOpts()}</select><label>どの口座へ</label><select id="a2">${accOpts()}</select>`;
  else h+=`<label>口座</label><select id="a1">${accOpts()}</select>`;
  h+=`<label>金額</label><input type="number" id="am" inputmode="numeric" min="1" placeholder="0">`;
- if(type!=='振替'){h+=`<label>科目</label><select id="sj">${opts(type==='収入'?INC:Object.keys(EXP))}</select><div id="itw"></div><label>お店</label><select id="shs"></select><input type="text" id="sh" placeholder="お店の名前" style="margin-top:6px;display:none"><label>メモ(空欄可)</label><input type="text" id="mm">`}
+ if(type!=='振替'){h+=`<label>科目</label><select id="sj">${opts(type==='収入'?INC:Object.keys(EXP))}</select><div id="itw"></div><label>お店</label><select id="shs"></select><input type="text" id="sh" placeholder="お店の名前" style="margin-top:6px;display:none"><label>メモ(空欄可)</label><input type="text" id="mm"><label style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--tx);margin-top:12px"><input type="checkbox" id="st" style="width:20px;height:20px;margin:0"><span><span class="star">★</span>付きにする</span></label>`}
  h+=`<button class="ok" id="sv">入力を確定</button><button class="ok cl" id="x1">キャンセル</button>${editId?'<button class="ok" id="dl" style="background:#d12c2c">この入力を削除</button>':''}`;
  $('s1').innerHTML=h;
  document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{type=b.dataset.t;form()});
  const items=()=>{const w=$('itw');if(type!=='支出'){w.innerHTML='';return}const it=EXP[$('sj').value];w.innerHTML=it?`<label>品目</label><select id="it">${opts(it)}</select>`:''};
  if($('sj')){$('sj').onchange=()=>{items();shopUI()};items();shopUI();$('shs').onchange=()=>{$('sh').style.display=$('shs').value==='__new'?'':'none'}}
  if(type==='振替')$('a2').selectedIndex=1;
- if(editId){const t=S.tx.find(x=>x.id===editId);$('dt').value=t.date;$('a1').value=t.acct;$('am').value=t.amount;if(t.type==='振替')$('a2').value=t.to;else{if(t.subject)$('sj').value=t.subject;items();if($('it'))$('it').value=t.item;shopUI(t.shop||'');$('mm').value=t.memo||''}
+ if(editId){const t=S.tx.find(x=>x.id===editId);$('dt').value=t.date;$('a1').value=t.acct;$('am').value=t.amount;if(t.type==='振替')$('a2').value=t.to;else{if(t.subject)$('sj').value=t.subject;items();if($('it'))$('it').value=t.item;shopUI(t.shop||'');$('mm').value=t.memo||'';$('st').checked=!!t.star}
   $('dl').onclick=()=>{if(!$('dl').dataset.a){$('dl').dataset.a=1;$('dl').textContent='もう一度押すと削除します';return}S.tx=S.tx.filter(x=>x.id!==editId);S.sync=null;save();render();closeForm();msg('削除しました。')}}
  $('x1').onclick=closeForm;
  $('sv').onclick=()=>{const am=Math.round(+$('am').value);
   if(!am||am<1)return msg('金額を入力してください。');
   const t={id:editId||Date.now(),date:$('dt').value,type,acct:$('a1').value,amount:am};
   if(type==='振替'){t.to=$('a2').value;if(t.to===t.acct)return msg('振替元と振替先に別の口座を選んでください。')}
-  else{t.subject=$('sj').value;t.item=$('it')?$('it').value:'';t.shop=$('shs').value==='__new'?$('sh').value.trim():$('shs').value;t.memo=$('mm').value}
+  else{t.subject=$('sj').value;t.item=$('it')?$('it').value:'';t.shop=$('shs').value==='__new'?$('sh').value.trim():$('shs').value;t.memo=$('mm').value;t.star=$('st').checked}
   if(editId){const i=S.tx.findIndex(x=>x.id===editId);S.tx[i]=t}else S.tx.push(t);S.sync=null;save();render();closeForm();msg('保存しました。')}}
 $('add').onclick=()=>{editId=null;form();$('d1').classList.add('on')};
 $('csv').onclick=()=>{
