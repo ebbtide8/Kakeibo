@@ -10,7 +10,7 @@ body{background:var(--bg);color:var(--tx);font:15px/1.4 "Hiragino Sans","Noto Sa
 #top{padding:10px 14px 6px;text-align:center}
 #top small{color:var(--gray)}#total{font-size:24px;font-weight:700;line-height:1.2}
 .neg{color:var(--red)}
-#bar{display:flex;gap:8px;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--gl)}
+#bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--gl)}
 button{font:inherit;cursor:pointer}
 .sm{background:var(--gl);color:var(--tx);border:0;border-radius:8px;padding:5px 10px;font-size:13px}
 #cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 8px;overflow-y:auto;align-content:start}
@@ -58,7 +58,7 @@ select,input[type=date],input[type=number],input[type=text]{width:100%;font:inhe
 @media (max-width:360px){.acc .v{font-size:16px}}
 </style></head><body>
 <div id="top"><small>2人の合計残高(タップで将来の合計)</small><div id="total">¥ 0</div>
-<div id="bar"><button class="sm" id="edit">名前・口座を編集</button><button class="sm" id="csv">CSV出力</button><button class="sm" id="hide">金額を非表示</button></div></div>
+<div id="bar"><button class="sm" id="edit">名前・口座を編集</button><button class="sm" id="csv">CSV出力</button><button class="sm" id="hide">金額を非表示</button><button class="sm" id="cfg">同期設定</button></div></div>
 <div id="cols"><div class="col h" id="ch"></div><div class="col w" id="cw"></div></div>
 <div id="foot"><button id="srch">履歴を検索</button><button id="add">入力</button></div>
 <div class="dlg" id="d1"><div class="sheet" id="s1"></div></div>
@@ -73,6 +73,7 @@ const EXP={未設定:0,食費:0,交通費:0,交際費:0,消耗品:0,雑費:0,図
 const KEY='kakeibo-v1';let S;
 try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
 if(!S){S={names:{h:'夫',w:'妻'},icons:{},acc:{},tx:[],sync:null};['h','w'].forEach(o=>ACC.forEach((a,i)=>S.acc[o+i]=a))}
+S.tx.forEach(t=>{if(typeof t.id!=='string')t.id=mkId();if(!t.updated)t.updated=Date.now()});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){msg('保存できません。ブラウザの容量を確認してください。')}};
 const $=id=>document.getElementById(id);
 const yen=n=>S.hide?'¥ ••••':'¥ '+n.toLocaleString('ja-JP');
@@ -97,17 +98,17 @@ function render(){
 let iconTarget=null;
 document.addEventListener('click',e=>{
  const ic=e.target.closest('[data-ic]');if(ic){iconMenu(ic.dataset.ic);return}
- if(e.target.closest('[data-cloud]')){msg('Googleスプレッドシートとの同期は、次の段階で設定できるようにします。');return}
+ if(e.target.closest('[data-cloud]')){doSync(true);return}
  const iv=e.target.closest('[data-init]');if(iv){initMenu(iv.dataset.init);return}
- const tr=e.target.closest('[data-tx]');if(tr){editTx(+tr.dataset.tx);return}
+ const tr=e.target.closest('[data-tx]');if(tr){editTx(tr.dataset.tx);return}
  const ac=e.target.closest('[data-ac]');if(ac&&!editing&&!e.target.closest('input'))hist(ac.dataset.ac)});
-$('file').onchange=e=>{const f=e.target.files[0];if(!f||!iconTarget)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=96;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,96,96);S.icons[iconTarget]=c.toDataURL('image/jpeg',.8);save();render()};im.src=r.result};r.readAsDataURL(f);e.target.value=''};
-document.addEventListener('input',e=>{const t=e.target;if(t.dataset.nm){S.names[t.dataset.nm]=t.value;save()}if(t.dataset.an){S.acc[t.dataset.an]=t.value;save()}});
+$('file').onchange=e=>{const f=e.target.files[0];if(!f||!iconTarget)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=96;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,96,96);S.icons[iconTarget]=c.toDataURL('image/jpeg',.8);touch('icon:'+iconTarget);save();render()};im.src=r.result};r.readAsDataURL(f);e.target.value=''};
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset.nm){S.names[t.dataset.nm]=t.value;touch('name:'+t.dataset.nm);save()}if(t.dataset.an){S.acc[t.dataset.an]=t.value;touch('acc:'+t.dataset.an);save()}});
 $('edit').onclick=()=>{editing=!editing;render()};
 $('hide').onclick=()=>{S.hide=!S.hide;save();render()};
 $('total').onclick=()=>{const a=ids.reduce((s,i)=>s+bal(i),0),f=ids.reduce((s,i)=>s+bal(i,true),0);
  $('s2').innerHTML=`<h2>2人の合計</h2><div class="row"><span>現在の合計</span><b class="${a<0?'neg':''}">${yen(a)}</b></div><div class="row" style="opacity:.7"><span>将来の合計</span><b class="${f<0?'neg':''}">${yen(f)}</b></div><button class="ok cl" id="x2">閉じる</button>`;$('d2').classList.add('on');$('x2').onclick=()=>$('d2').classList.remove('on')};
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!editing)render()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(!editing)render();doSync(false)}});
 const owner=id=>S.names[id[0]];
 const an=id=>owner(id)+'の'+S.acc[id];
 function hist(id){
@@ -141,16 +142,16 @@ function isHol(y,m,d){const dt=new Date(y,m-1,d),w=dt.getDay();if(w===0||w===6||
 function settleDate(y,m){let d=10;while(isHol(y,m,d))d++;return y+'-'+pad(m)+'-'+pad(d)}
 function sched(id){const src=id[1]==='4'?id[0]+'1':'h1',td=todayStr(),sum={};
  S.tx.forEach(t=>{if(t.acct!==id||(t.type!=='支出'&&t.type!=='収入'))return;let[y,m]=t.date.split('-').map(Number);m++;if(m>12){m=1;y++}let sd=settleDate(y,m);if(sd<td){let ty=+td.slice(0,4),tm=+td.slice(5,7)+1;if(tm>12){tm=1;ty++}sd=settleDate(ty,tm)}sum[sd]=(sum[sd]||0)+(t.type==='支出'?t.amount:-t.amount)});
- let add=0,dup=0;Object.keys(sum).sort().forEach(sd=>{const a=sum[sd];if(a<=0)return;if(S.tx.some(t=>t.type==='振替'&&t.to===id&&t.date===sd)){dup++;return}S.tx.push({id:Date.now()+add,date:sd,type:'振替',acct:src,to:id,amount:a});add++});
+ let add=0,dup=0;Object.keys(sum).sort().forEach(sd=>{const a=sum[sd];if(a<=0)return;if(S.tx.some(t=>t.type==='振替'&&t.to===id&&t.date===sd)){dup++;return}S.tx.push({id:mkId(),updated:Date.now(),date:sd,type:'振替',acct:src,to:id,amount:a});add++});
  if(add){S.sync=null;save();render()}hist(id);
  msg(add?add+'件の振替予定を登録しました。'+(dup?'(登録済み'+dup+'件は除く)':''):dup?'すでに振替予定が登録されているため、二重登録しませんでした。':'振替予定にできる支出がありません。')}
 let csvTarget=null;
 function initMenu(id){const cur=(S.init&&S.init[id])||0;$('s2').innerHTML=`<h2>${esc(an(id))}の初期設定金額</h2><p style="color:var(--gray);font-size:13px;margin:0">この金額に履歴の収入・支出・振替を加減して残高を計算します。履歴やCSV出力の内容は変わりません。</p><label>初期設定金額(円)</label><input type="number" id="iv" inputmode="numeric" value="${cur}"><div class="row" style="margin-top:10px"><span>現在の残高</span><b>${yen(bal(id))}</b></div><button class="ok" id="isv">設定する</button><button class="ok cl" id="ixx">キャンセル</button>`;$('d2').classList.add('on');
- $('isv').onclick=()=>{S.init=S.init||{};S.init[id]=Math.round(+$('iv').value)||0;S.sync=null;save();render();$('d2').classList.remove('on')};
+ $('isv').onclick=()=>{S.init=S.init||{};S.init[id]=Math.round(+$('iv').value)||0;touch('init:'+id);save();render();$('d2').classList.remove('on')};
  $('ixx').onclick=()=>$('d2').classList.remove('on')}
 function iconMenu(k){const has=!!S.icons[k];$('s2').innerHTML=`<h2>アイコンの設定</h2><button class="ok" id="ia">A: アイコン画像を設定／再設定</button><button class="ok" id="ib" style="background:#d12c2c;${has?'':'opacity:.4'}">B: アイコン画像を削除</button><button class="ok cl" id="ix">キャンセル</button>`;$('d2').classList.add('on');
  $('ia').onclick=()=>{iconTarget=k;$('d2').classList.remove('on');$('file').click()};
- $('ib').onclick=()=>{if(has){delete S.icons[k];save();render()}$('d2').classList.remove('on')};
+ $('ib').onclick=()=>{if(has){delete S.icons[k];touch('icon:'+k);save();render()}$('d2').classList.remove('on')};
  $('ix').onclick=()=>$('d2').classList.remove('on')}
 function parseCSV(t){const rows=[];let r=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}else if(c==='"')q=true;else if(c===','){r.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;r.push(f);rows.push(r);r=[];f=''}else f+=c}if(f!==''||r.length){r.push(f);rows.push(r)}return rows}
 function importCSV(id,buf){let tx;try{tx=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){tx=new TextDecoder('shift_jis').decode(buf)}
@@ -160,7 +161,7 @@ function importCSV(id,buf){let tx;try{tx=new TextDecoder('utf-8',{fatal:true}).d
  let n=0,skip=0;rows.slice(1).forEach(r=>{const m=(r[iD]||'').normalize('NFKC').match(/(\d{4})年(\d{1,2})月(\d{1,2})日/),a=parseInt((r[iA]||'').normalize('NFKC').replace(/[,\s円]/g,''),10);if(!m||isNaN(a)||a===0)return;
   const date=m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]),ty=a<0?'収入':'支出',amt=Math.abs(a),shop=(r[iS]||'').normalize('NFKC').replace(/\s+/g,' ').trim(),k=key(date,ty,amt,shop);
   if(have[k]>0){have[k]--;skip++;return}
-  S.tx.push({id:Date.now()+n,date,type:ty,acct:id,amount:amt,subject:'',item:'',shop,memo:''});n++});
+  S.tx.push({id:mkId(),updated:Date.now(),date,type:ty,acct:id,amount:amt,subject:'',item:'',shop,memo:''});n++});
  if(n){S.sync=null;save();render()}hist(id);
  msg(n?n+'件を取り込みました。'+(skip?'(登録済み'+skip+'件は除く)':''):skip?'すべて取り込み済みのため、追加しませんでした。':'取り込める明細がありませんでした。')}
 $('csvf').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f&&csvTarget)importCSV(csvTarget,await f.arrayBuffer())};
@@ -177,6 +178,30 @@ function runSearch(){backFn=runSearch;const q=lastQ;if(!q)return;const sp=q.s?q.
   h+=`<div class="row ${fut?'fut':''}" data-tx="${t.id}"><div>${t.date}${fut?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc(t.type==='振替'?an(t.acct)+' → '+an(t.to):[an(t.acct),t.shop,t.memo].filter(Boolean).join(' / '))}</small></div><b class="${t.type==='支出'?'neg':''}">${yen(v)}</b></div>`});
  h+='<button class="ok cl" id="sx">閉じる</button>';$('s2').innerHTML=h;$('d2').classList.add('on');$('sx').onclick=()=>$('d2').classList.remove('on')}
 $('srch').onclick=searchForm;
+function mkId(){const d=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().replace(/[-:T]/g,'');return((S.cfg&&S.cfg.dev)||'LA')+'-'+d.slice(0,8)+'-'+d.slice(8,14)+'-'+Math.random().toString(36).slice(2,6)}
+function touch(k){S.setU=S.setU||{};S.setU[k]=Date.now();S.sync=null}
+function syncCfg(){const c=S.cfg||{};$('s2').innerHTML=`<h2>同期設定</h2><p style="color:var(--gray);font-size:13px;margin:0">この端末の中だけに保存されます(GitHubには置きません)。</p><label>この端末の持ち主</label><select id="cd"><option value="HA">夫</option><option value="WA">妻</option></select><label>ウェブアプリのURL</label><input type="text" id="cu" value="${esc(c.url||'')}"><label>秘密のキー</label><input type="password" id="ck" value="${esc(c.token||'')}"><button class="ok" id="cs">保存して同期</button><button class="ok cl" id="cx">閉じる</button>`;$('cd').value=c.dev||'HA';$('d2').classList.add('on');
+ $('cs').onclick=()=>{S.cfg={dev:$('cd').value,url:$('cu').value.trim(),token:$('ck').value.trim()};save();$('d2').classList.remove('on');doSync(true)};$('cx').onclick=()=>$('d2').classList.remove('on')}
+let syncing=false;
+async function doSync(manual){const c=S.cfg||{};if(!c.url||!c.token||!c.dev){if(manual)syncCfg();return}
+ if(syncing)return;syncing=true;const t0=Date.now(),pa=S.pushedAt||0;
+ try{S.tx.forEach(t=>{if(!t.updated)t.updated=t0;if(!t.src)t.src=c.dev});
+  const tx=S.tx.concat(S.del||[]).filter(t=>t.updated>pa).map(t=>({id:t.id,date:t.date,type:t.type,acct:t.acct,to:t.to||'',amount:t.amount,subject:t.subject||'',item:t.item||'',shop:t.shop||'',memo:t.memo||'',star:!!t.star,updated:t.updated,src:t.src||c.dev,deleted:t.deleted||0}));
+  const set=Object.keys(S.setU||{}).filter(k=>S.setU[k]>pa).map(k=>{const p=k.split(':'),a=p[0],b=p[1];const v=a==='name'?S.names[b]:a==='acc'?S.acc[b]:a==='icon'?(S.icons[b]||null):((S.init||{})[b]||0);return{k,v:JSON.stringify(v),updated:S.setU[k]}});
+  const r=await fetch(c.url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:c.token,dev:c.dev,since:S.since||0,tx,set})});const j=await r.json();if(!j.ok)throw new Error(j.err);
+  let n=0;
+  (j.tx||[]).forEach(x=>{const i=S.tx.findIndex(t=>t.id===x.id),d=(S.del||[]).some(t=>t.id===x.id);
+   if(x.deleted){if(i>=0){S.tx.splice(i,1);n++}if(!d)(S.del=S.del||[]).push(x);return}
+   if(d)return;
+   const o={id:x.id,date:x.date,type:x.type,acct:x.acct,amount:x.amount,subject:x.subject,item:x.item,shop:x.shop,memo:x.memo,star:x.star,updated:x.updated,src:x.src};if(x.to)o.to=x.to;
+   if(i<0){S.tx.push(o);n++}else if(x.updated>S.tx[i].updated){S.tx[i]=o;n++}});
+  (j.set||[]).forEach(x=>{S.setU=S.setU||{};if(x.updated<=(S.setU[x.k]||0))return;const p=x.k.split(':'),a=p[0],b=p[1];let v=null;try{v=JSON.parse(String(x.v))}catch(e){}
+   if(a==='name'){if(v)S.names[b]=v}else if(a==='acc'){if(v)S.acc[b]=v}else if(a==='icon'){if(v)S.icons[b]=v;else delete S.icons[b]}else if(a==='init'){S.init=S.init||{};S.init[b]=Number(v)||0}
+   S.setU[x.k]=x.updated;n++});
+  S.since=j.now;S.pushedAt=t0;S.sync=Date.now();save();if(!editing)render();if(manual)msg('同期しました。(取り込み '+n+'件)')
+ }catch(e){if(manual)msg('同期できませんでした。通信状況と同期設定を確認してください。')}
+ finally{syncing=false}}
+$('cfg').onclick=syncCfg;addEventListener('online',()=>doSync(false));
 function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t)return;editId=id;type=t.type;$('d2').classList.remove('on');form();$('d1').classList.add('on')}
 function form(){
  const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
@@ -194,11 +219,11 @@ function form(){
  if($('sj')){$('sj').onchange=()=>{items();shopUI()};items();shopUI();$('shs').onchange=()=>{$('sh').style.display=$('shs').value==='__new'?'':'none'}}
  if(type==='振替')$('a2').selectedIndex=1;
  if(editId){const t=S.tx.find(x=>x.id===editId);$('dt').value=t.date;$('a1').value=t.acct;$('am').value=t.amount;if(t.type==='振替')$('a2').value=t.to;else{if(t.subject)$('sj').value=t.subject;items();if($('it'))$('it').value=t.item;shopUI(t.shop||'');$('mm').value=t.memo||'';$('st').checked=!!t.star}
-  $('dl').onclick=()=>{if(!$('dl').dataset.a){$('dl').dataset.a=1;$('dl').textContent='もう一度押すと削除します';return}S.tx=S.tx.filter(x=>x.id!==editId);S.sync=null;save();render();closeForm();msg('削除しました。')}}
+  $('dl').onclick=()=>{if(!$('dl').dataset.a){$('dl').dataset.a=1;$('dl').textContent='もう一度押すと削除します';return}const d=S.tx.find(x=>x.id===editId);S.tx=S.tx.filter(x=>x.id!==editId);if(d){d.deleted=Date.now();d.updated=d.deleted;(S.del=S.del||[]).push(d)}S.sync=null;save();render();closeForm();msg('削除しました。')}}
  $('x1').onclick=closeForm;
  $('sv').onclick=()=>{const am=Math.round(+$('am').value);
   if(!am||am<1)return msg('金額を入力してください。');
-  const t={id:editId||Date.now(),date:$('dt').value,type,acct:$('a1').value,amount:am};
+  const t={id:editId||mkId(),updated:Date.now(),src:(S.cfg&&S.cfg.dev)||'LA',date:$('dt').value,type,acct:$('a1').value,amount:am};
   if(type==='振替'){t.to=$('a2').value;if(t.to===t.acct)return msg('振替元と振替先に別の口座を選んでください。')}
   else{t.subject=$('sj').value;t.item=$('it')?$('it').value:'';t.shop=$('shs').value==='__new'?$('sh').value.trim():$('shs').value;t.memo=$('mm').value;t.star=$('st').checked}
   if(editId){const i=S.tx.findIndex(x=>x.id===editId);S.tx[i]=t}else S.tx.push(t);S.sync=null;save();render();closeForm();msg('保存しました。')}}
@@ -209,5 +234,5 @@ $('csv').onclick=()=>{
  S.tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>rows.push([t.date,t.type,an(t.acct),t.to?an(t.to):'',t.amount,t.subject||'',t.item||'',t.shop||'',t.memo||'']));
  const blob=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'});
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='kakeibo.csv';a.click()};
-render();
+render();doSync(false);
 </script></body></html>
