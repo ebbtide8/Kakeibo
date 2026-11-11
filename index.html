@@ -199,7 +199,7 @@ async function doSync(manual){const c=S.cfg||{};if(!c.url||!c.token||!c.dev){if(
    if(a==='name'){if(v)S.names[b]=v}else if(a==='acc'){if(v)S.acc[b]=v}else if(a==='icon'){if(v)S.icons[b]=v;else delete S.icons[b]}else if(a==='init'){S.init=S.init||{};S.init[b]=Number(v)||0}
    S.setU[x.k]=x.updated;n++});
   S.since=j.now;S.pushedAt=t0;S.sync=Date.now();save();if(!editing)render();if(manual)msg('同期しました。(取り込み '+n+'件)')
- }catch(e){if(manual)msg('同期できませんでした。通信状況と同期設定を確認してください。')}
+ }catch(e){if(manual)msg('同期できませんでした。通信状況と同期設定を確認してください。('+(e&&e.message?e.message:e)+')')}
  finally{syncing=false}}
 $('cfg').onclick=syncCfg;addEventListener('online',()=>doSync(false));
 function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t)return;editId=id;type=t.type;$('d2').classList.remove('on');form();$('d1').classList.add('on')}
