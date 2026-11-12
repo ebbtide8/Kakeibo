@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>家計簿</title><link rel="icon" href="data:,">
+<title>家計簿</title><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2f9e5b"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="家計簿">
 <style>
 :root{--bg:#f4f5f6;--card:#fff;--tx:#1a1a1a;--red:#d12c2c;--gray:#6b7280;--gl:#e5e7eb;--g:#2f9e5b;--h:#2b6cb0;--w:#dd7a1f;--hb:#e6effa;--wb:#fdf0e2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171a;--card:#202327;--tx:#f0f0f0;--red:#ff6b6b;--gray:#9aa1ab;--gl:#33383e;--hb:#1c2a3b;--wb:#3a2a19;color-scheme:dark}}
@@ -10,9 +10,9 @@ body{background:var(--bg);color:var(--tx);font:15px/1.4 "Hiragino Sans","Noto Sa
 #top{padding:10px 14px 6px;text-align:center}
 #top small{color:var(--gray)}#total{font-size:24px;font-weight:700;line-height:1.2}
 .neg{color:var(--red)}
-#bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--gl)}
+#bar{display:flex;flex-wrap:nowrap;gap:6px;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--gl)}
 button{font:inherit;cursor:pointer}
-.sm{background:var(--gl);color:var(--tx);border:0;border-radius:8px;padding:5px 10px;font-size:13px}
+.sm{background:var(--gl);color:var(--tx);border:0;border-radius:8px;padding:6px 9px;font-size:13px;white-space:nowrap}
 #cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 8px;overflow-y:auto;align-content:start}
 .col{background:var(--card);border-radius:12px;padding:10px;min-width:0}
 .col.h{border-top:5px solid var(--h)}.col.w{border-top:5px solid var(--w)}
@@ -33,7 +33,9 @@ button{font:inherit;cursor:pointer}
 input.nm{font:inherit;width:100%;min-width:0;border:1px solid var(--gl);border-radius:6px;padding:3px 6px;background:var(--bg);color:var(--tx)}
 .sync{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:8px;font-size:11px;color:var(--gray)}
 .sync.warn{color:var(--tx);background:var(--gl);border-radius:6px;padding:4px}
-#add{margin:8px;padding:16px;border:0;border-radius:12px;background:var(--g);color:#fff;font-size:18px;font-weight:700;width:calc(100% - 16px)}
+.fb{display:block;margin:8px 8px 0;height:50px;border:0;border-radius:12px;color:#fff;font-size:17px;font-weight:700;width:calc(100% - 16px)}
+.fb svg{width:20px;height:20px;vertical-align:-4px;margin-right:6px}
+#add{background:var(--g);margin-bottom:8px}
 #foot{padding-bottom:env(safe-area-inset-bottom,0px)}
 .dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:5}
 .dlg.on{display:flex}
@@ -51,16 +53,17 @@ select,input[type=date],input[type=number],input[type=text]{width:100%;font:inhe
 .row small{display:block;color:var(--gray)}
 .row.fut{opacity:.7}
 .star{color:#f08a00;font-weight:700}
-#srch{margin:8px 8px 0;padding:13px;border:0;border-radius:12px;background:var(--h);color:#fff;font-size:16px;font-weight:700;width:calc(100% - 16px)}
+#srch{background:var(--h)}
+#sync{background:#d12c2c}
 .row[data-tx]{cursor:pointer;border-radius:6px;padding-left:4px;padding-right:4px}
 .row[data-tx]:hover{background:var(--gl)}
 #msg{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--gray);color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;display:none;z-index:9;max-width:90%}
 @media (max-width:360px){.acc .v{font-size:16px}}
 </style></head><body>
 <div id="top"><small>2人の合計残高(タップで将来の合計)</small><div id="total">¥ 0</div>
-<div id="bar"><button class="sm" id="edit">名前・口座を編集</button><button class="sm" id="csv">CSV出力</button><button class="sm" id="hide">金額を非表示</button><button class="sm" id="cfg">同期設定</button></div></div>
+<div id="bar"><button class="sm" id="edit">口座編集</button><button class="sm" id="csv">CSV出力</button><button class="sm" id="hide">金額非表示</button><button class="sm" id="cfg">同期設定</button></div></div>
 <div id="cols"><div class="col h" id="ch"></div><div class="col w" id="cw"></div></div>
-<div id="foot"><button id="srch">履歴を検索</button><button id="add">入力</button></div>
+<div id="foot"><button class="fb" id="sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 19a4.5 4.5 0 0 1-.6-8.96 6 6 0 0 1 11.5-1.5A4.8 4.8 0 0 1 17.5 19z"/></svg>同期</button><button class="fb" id="srch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>履歴を検索</button><button class="fb" id="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>入力</button></div>
 <div class="dlg" id="d1"><div class="sheet" id="s1"></div></div>
 <div class="dlg" id="d2"><div class="sheet" id="s2"></div></div>
 <div id="msg"></div>
@@ -91,10 +94,10 @@ function render(){
   for(let i=0;i<6;i++){const id=o+i,b=bal(id);tot+=b;
    h+=`<div class="acc" data-ac="${id}">${icon(id)}<div class="tx"><div class="n">${editing?`<input class="nm" data-an="${id}" value="${esc(S.acc[id])}">`:esc(S.acc[id])}</div><div class="v ${b<0?'neg':''}" ${editing?`data-init="${id}"`:''}>${yen(b)}</div></div></div>`}
   const stale=S.sync===null;
-  h+=`<div class="sync ${stale?'warn':''}"><span>${S.sync?'最終同期 '+new Date(S.sync).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'未同期の保存があります'}</span><button class="sm" data-cloud="1" aria-label="今すぐ同期">☁</button></div>`;
+  h+=`<div class="sync ${stale?'warn':''}"><span>${S.sync?'最終同期 '+new Date(S.sync).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'未同期の保存があります'}</span></div>`;
   $('c'+o).innerHTML=h});
  const t=$('total');t.textContent=yen(tot);t.className=tot<0?'neg':'';
- $('edit').textContent=editing?'編集を終える':'名前・口座を編集';$('hide').textContent=S.hide?'金額を表示':'金額を非表示'}
+ $('edit').textContent=editing?'編集終了':'口座編集';$('hide').textContent=S.hide?'金額表示':'金額非表示'}
 let iconTarget=null;
 document.addEventListener('click',e=>{
  const ic=e.target.closest('[data-ic]');if(ic){iconMenu(ic.dataset.ic);return}
@@ -201,7 +204,8 @@ async function doSync(manual){const c=S.cfg||{};if(!c.url||!c.token||!c.dev){if(
   S.since=j.now;S.pushedAt=t0;S.sync=Date.now();save();if(!editing)render();if(manual)msg('同期しました。(取り込み '+n+'件)')
  }catch(e){if(manual)msg('同期できませんでした。通信状況と同期設定を確認してください。('+(e&&e.message?e.message:e)+')')}
  finally{syncing=false}}
-$('cfg').onclick=syncCfg;addEventListener('online',()=>doSync(false));
+$('cfg').onclick=syncCfg;$('sync').onclick=()=>doSync(true);addEventListener('online',()=>doSync(false));
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t)return;editId=id;type=t.type;$('d2').classList.remove('on');form();$('d1').classList.add('on')}
 function form(){
  const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
