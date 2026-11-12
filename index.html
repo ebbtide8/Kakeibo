@@ -42,7 +42,8 @@ input.nm{font:inherit;width:100%;min-width:0;border:1px solid var(--gl);border-r
 .sheet{background:var(--card);width:100%;max-width:520px;max-height:92%;overflow-y:auto;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
 .sheet h2{margin:0 0 10px;font-size:17px}
 .stk{position:sticky;bottom:0;background:var(--card);margin:0 -14px calc(-14px - env(safe-area-inset-bottom,0px));padding:8px 14px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--gl)}
-.stk .ok{margin-top:0}
+.stk .ok{margin-top:0;padding:10px;font-size:15px}
+.stk .ok+.ok{margin-top:6px}
 .dsum{font-size:12px;color:var(--gray);opacity:.7;text-align:right;padding:8px 4px 0}
 label{display:block;font-size:12px;color:var(--gray);margin:10px 0 3px}
 select,input[type=date],input[type=number],input[type=text]{width:100%;font:inherit;padding:9px;border:1px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--tx)}
@@ -125,8 +126,8 @@ function hist(id){
  const dsm={};L.forEach(t=>{if(t.type==='支出')dsm[t.date]=(dsm[t.date]||0)+t.amount});let ld='';
  L.forEach(t=>{if(t.date!==ld){ld=t.date;if(dsm[ld])h+=`<div class="dsum">支出合計 ${yen(dsm[ld])}</div>`}const v=t.type==='収入'?t.amount:t.type==='支出'?-t.amount:(t.acct===id?-t.amount:t.amount);
   h+=`<div class="row ${t.date>todayStr()?'fut':''}" data-tx="${t.id}"><div>${t.date}${t.date>todayStr()?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc([t.shop,t.memo].filter(Boolean).join(' / '))}${t.type==='振替'?esc(t.acct===id?'→ '+an(t.to):'← '+an(t.acct)):''}</small></div><b class="${v<0?'neg':''}">${yen(v)}</b></div>`});
- if(/^[hw]4$/.test(id))h+='<button class="ok" id="csvi" style="background:#2b6cb0">CSV読み込み</button>';
- if(/^[hw][45]$/.test(id))h+='<button class="ok" id="sch">翌月10日の振替予定を自動入力</button>';h+='<div class="stk"><button class="ok cl" id="x2">閉じる</button></div>';$('s2').innerHTML=h;$('d2').classList.add('on');if($('sch'))$('sch').onclick=()=>sched(id);if($('csvi'))$('csvi').onclick=()=>{csvTarget=id;$('csvf').click()};$('x2').onclick=()=>$('d2').classList.remove('on')}
+ let ex='';if(/^[hw]4$/.test(id))ex+='<button class="ok" id="csvi" style="background:#2b6cb0">CSV読み込み</button>';
+ if(/^[hw][45]$/.test(id))ex+='<button class="ok" id="sch">翌月10日の振替予定を自動入力</button>';h+='<div class="stk">'+ex+'<button class="ok cl" id="x2">閉じる</button></div>';$('s2').innerHTML=h;$('d2').classList.add('on');if($('sch'))$('sch').onclick=()=>sched(id);if($('csvi'))$('csvi').onclick=()=>{csvTarget=id;$('csvf').click()};$('x2').onclick=()=>$('d2').classList.remove('on')}
 $('d2').onclick=e=>{if(e.target.id==='d2')$('d2').classList.remove('on')};
 $('d1').onclick=e=>{if(e.target.id==='d1')closeForm()};
 const opts=(a,sel)=>a.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
