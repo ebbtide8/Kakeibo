@@ -58,6 +58,7 @@ select,input[type=date],input[type=number],input[type=text]{width:100%;font:inhe
 .row small{display:block;color:var(--gray)}
 .row.fut{opacity:.7}
 .star{color:#f08a00;font-weight:700}
+.un{color:var(--h);font-weight:700}
 #srch{background:var(--h)}
 #sync{background:#d12c2c}
 .row[data-tx]{cursor:pointer;border-radius:6px;padding-left:4px;padding-right:4px}
@@ -68,7 +69,7 @@ select,input[type=date],input[type=number],input[type=text]{width:100%;font:inhe
 <div id="top"><small>2人の合計残高(タップで将来の合計)</small><div id="total">¥ 0</div>
 <div id="bar"><button class="sm" id="edit">口座編集</button><button class="sm" id="csv">CSV出力</button><button class="sm" id="hide">金額非表示</button><button class="sm" id="cfg">同期設定</button></div></div>
 <div id="cols"><div class="col h" id="ch"></div><div class="col w" id="cw"></div></div>
-<div id="foot"><div id="ver">v1.2.0</div><button class="fb" id="sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 19a4.5 4.5 0 0 1-.6-8.96 6 6 0 0 1 11.5-1.5A4.8 4.8 0 0 1 17.5 19z"/></svg>同期</button><button class="fb" id="srch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>履歴を検索</button><button class="fb" id="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>入力</button></div>
+<div id="foot"><div id="ver">v1.3.0</div><button class="fb" id="sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 19a4.5 4.5 0 0 1-.6-8.96 6 6 0 0 1 11.5-1.5A4.8 4.8 0 0 1 17.5 19z"/></svg>同期</button><button class="fb" id="srch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>履歴を検索</button><button class="fb" id="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>入力</button></div>
 <div class="dlg" id="d1"><div class="sheet" id="s1"></div></div>
 <div class="dlg" id="d2"><div class="sheet" id="s2"></div></div>
 <div id="msg"></div>
@@ -102,7 +103,7 @@ function render(){
   h+=`<div class="sync ${stale?'warn':''}"><span>${S.sync?'最終同期 '+new Date(S.sync).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'未同期の保存があります'}</span></div>`;
   $('c'+o).innerHTML=h});
  const t=$('total');t.textContent=yen(tot);t.className=tot<0?'neg':'';
- $('edit').textContent=editing?'編集終了':'口座編集';$('hide').textContent=S.hide?'金額表示':'金額非表示'}
+ $('edit').textContent=editing?'編集終了':'口座編集';$('hide').textContent=S.hide?'金額表示':'金額非表示';$('sync').style.background=S.sync===null?'#d12c2c':'rgba(209,44,44,.45)'}
 let iconTarget=null;
 document.addEventListener('click',e=>{
  const ic=e.target.closest('[data-ic]');if(ic){iconMenu(ic.dataset.ic);return}
@@ -126,7 +127,7 @@ function hist(id){
  if(!L.length)h+='<p style="color:var(--gray)">まだ履歴がありません。下の「入力」から登録できます。</p>';
  const dsm={};L.forEach(t=>{if(t.type==='支出')dsm[t.date]=(dsm[t.date]||0)+t.amount});let ld='';
  L.forEach(t=>{if(t.date!==ld){ld=t.date;if(dsm[ld])h+=`<div class="dsum">支出合計 ${yen(dsm[ld])}</div>`}const v=t.type==='収入'?t.amount:t.type==='支出'?-t.amount:(t.acct===id?-t.amount:t.amount);
-  h+=`<div class="row ${t.date>todayStr()?'fut':''}" data-tx="${t.id}"><div>${t.date}${t.date>todayStr()?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc([t.shop,t.memo].filter(Boolean).join(' / '))}${t.type==='振替'?esc(t.acct===id?'→ '+an(t.to):'← '+an(t.acct)):''}</small></div><b class="${v<0?'neg':''}">${yen(v)}</b></div>`});
+  h+=`<div class="row ${t.date>todayStr()?'fut':''}" data-tx="${t.id}"><div>${t.date}${t.date>todayStr()?'(予定)':''}　${t.type}${subj(t)}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc([t.shop,t.memo].filter(Boolean).join(' / '))}${t.type==='振替'?esc(t.acct===id?'→ '+an(t.to):'← '+an(t.acct)):''}</small></div><b class="${v<0?'neg':''}">${yen(v)}</b></div>`});
  let ex='';if(/^[hw]4$/.test(id))ex+='<button class="ok" id="csvi" style="background:#2b6cb0">CSV読み込み</button>';
  if(/^[hw][45]$/.test(id))ex+='<button class="ok" id="sch">翌月10日の振替予定を自動入力</button>';h+='<div class="stk">'+ex+'<button class="ok cl" id="x2">閉じる</button></div>';$('s2').innerHTML=h;$('d2').classList.add('on');if($('sch'))$('sch').onclick=()=>sched(id);if($('csvi'))$('csvi').onclick=()=>{csvTarget=id;$('csvf').click()};$('x2').onclick=()=>$('d2').classList.remove('on')}
 $('d2').onclick=e=>{if(e.target.id==='d2')$('d2').classList.remove('on')};
@@ -184,11 +185,12 @@ function runSearch(){backFn=runSearch;const q=lastQ;if(!q)return;const sp=q.s?q.
  const L=S.tx.filter(t=>(!q.t||t.type===q.t)&&(!q.f||t.date>=q.f)&&(!q.e||t.date<=q.e)&&(!q.a||t.acct===q.a||t.to===q.a)&&(!qs||(t.type!=='振替'&&(t.subject||'未設定')===qs&&(!qi||t.item===qi)))&&(!q.h||nz(t.shop).includes(q.h))&&(!q.m||nz(t.memo).includes(q.m))&&(!q.r||t.star)).sort(cmpTx);
  let h=`<h2>検索結果(${L.length}件)</h2>`;if(!L.length)h+='<p style="color:var(--gray)">条件に合う履歴がありません。</p>';
  L.forEach(t=>{const fut=t.date>todayStr(),v=t.type==='収入'?t.amount:t.type==='支出'?-t.amount:t.amount;
-  h+=`<div class="row ${fut?'fut':''}" data-tx="${t.id}"><div>${t.date}${fut?'(予定)':''}　${t.type}${t.subject?'・'+esc(t.subject):''}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc(t.type==='振替'?an(t.acct)+' → '+an(t.to):[an(t.acct),t.shop,t.memo].filter(Boolean).join(' / '))}</small></div><b class="${t.type==='支出'?'neg':''}">${yen(v)}</b></div>`});
+  h+=`<div class="row ${fut?'fut':''}" data-tx="${t.id}"><div>${t.date}${fut?'(予定)':''}　${t.type}${subj(t)}${t.item?'・'+esc(t.item):''}${t.star?' <span class="star">★</span>':''}<small>${esc(t.type==='振替'?an(t.acct)+' → '+an(t.to):[an(t.acct),t.shop,t.memo].filter(Boolean).join(' / '))}</small></div><b class="${t.type==='支出'?'neg':''}">${yen(v)}</b></div>`});
  h+='<div class="stk"><button class="ok cl" id="sx">閉じる</button></div>';$('s2').innerHTML=h;$('d2').classList.add('on');$('sx').onclick=()=>$('d2').classList.remove('on')}
 $('srch').onclick=searchForm;
 function idTime(id){const m=String(id).match(/^[A-Z]{2}-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-/);return m?Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6])+new Date().getTimezoneOffset()*6e4:0}
 function cmpTx(a,b){return b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0)||String(b.id).localeCompare(String(a.id))}
+function subj(t){if(t.type==='振替')return '';const s=t.subject||'未設定';return s==='未設定'?'・<b class="un">未設定</b>':'・'+esc(s)}
 function mkId(){const d=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().replace(/[-:T]/g,'');return((S.cfg&&S.cfg.dev)||'LA')+'-'+d.slice(0,8)+'-'+d.slice(8,14)+'-'+Math.random().toString(36).slice(2,6)}
 function touch(k){S.setU=S.setU||{};S.setU[k]=Date.now();S.sync=null}
 function syncCfg(){const c=S.cfg||{};$('s2').innerHTML=`<h2>同期設定</h2><p style="color:var(--gray);font-size:13px;margin:0">この端末の中だけに保存されます(GitHubには置きません)。</p><label>この端末の持ち主</label><select id="cd"><option value="HA">夫</option><option value="WA">妻</option></select><label>ウェブアプリのURL</label><input type="text" id="cu" value="${esc(c.url||'')}"><label>秘密のキー</label><input type="password" id="ck" value="${esc(c.token||'')}"><button class="ok" id="cs">保存して同期</button><button class="ok cl" id="cx">閉じる</button>`;$('cd').value=c.dev||'HA';$('d2').classList.add('on');
